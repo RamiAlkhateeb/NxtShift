@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="lib/Nxt.UI/Nxt.UI.csproj" />
+  <Project Path="NxtShift.Core/NxtShift.Core.csproj" />
+  <Project Path="NxtShift.Web/NxtShift.Web.csproj" />
+  <Project Path="NxtShift.Tests/NxtShift.Tests.csproj" />
+</Solution>

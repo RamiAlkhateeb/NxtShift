@@ -1,0 +1,107 @@
+@inherits LayoutComponentBase
+@inject ShiftStore Store
+@inject StoredLocale Locale
+@inject ReminderService Reminders
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (!Store.Loaded)
+{
+    <div class="ns-splash"><img src="icon-192.png" alt="" width="96" height="96" /></div>
+}
+else
+{
+    <div class="ns-shell" dir="@Locale.Direction" lang="@Locale.Language">@Body</div>
+}
+<NxtToastHost />
+<NxtVersionBanner />
+
+@code {
+    // Screens that belong to a state; Settings is reachable from any of them.
+    private static readonly Dictionary<ShiftScreen, string> Routes = new()
+    {
+        [ShiftScreen.Welcome] = "welcome",
+        [ShiftScreen.Home] = "",
+        [ShiftScreen.Running] = "running",
+        [ShiftScreen.TimeUp] = "time-up",
+        [ShiftScreen.Done] = "done",
+    };
+
+    private readonly CancellationTokenSource _cts = new();
+    private ShiftScreen? _lastScreen;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Locale.InitializeAsync();
+        await ApplyDocumentLanguageAsync();
+        await Store.LoadAsync();
+        Store.Changed += OnChanged;
+        Locale.Changed += OnLocaleChanged;
+        Nav.LocationChanged += OnLocationChanged;
+        Guard();
+        _ = TickAsync(_cts.Token);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        try { await Reminders.StartAsync(); } catch (JSException) { }
+    }
+
+    /// <summary>Everything on screen is derived from timestamps, so a 1 s tick keeps it right, including after the phone sleeps.</summary>
+    private async Task TickAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(token)) Store.NotifyTick();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void OnChanged()
+    {
+        var screen = Store.Screen;
+        if (screen != _lastScreen) Guard();
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e) => Guard();
+
+    /// <summary>Sends the user to the screen for the current state, unless they are on Settings.</summary>
+    private void Guard()
+    {
+        if (!Store.Loaded) return;
+        var screen = Store.Screen;
+        _lastScreen = screen;
+        var path = Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/');
+        if (path == "settings") return;
+        var target = Routes[screen];
+        if (path != target) Nav.NavigateTo(target, replace: true);
+    }
+
+    private async void OnLocaleChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+        await ApplyDocumentLanguageAsync();
+        Store.NotifyTick();
+    }
+
+    private async Task ApplyDocumentLanguageAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("document.documentElement.setAttribute", "dir", Locale.Direction);
+            await JS.InvokeVoidAsync("document.documentElement.setAttribute", "lang", Locale.Language);
+        }
+        catch (JSException) { }
+    }
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        Store.Changed -= OnChanged;
+        Locale.Changed -= OnLocaleChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

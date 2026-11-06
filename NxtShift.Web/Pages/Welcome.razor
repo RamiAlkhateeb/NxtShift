@@ -1,0 +1,58 @@
+@page "/welcome"
+@inherits ScreenBase
+@inject DeviceService Device
+
+<PageTitle>@T["app_name"]</PageTitle>
+
+<main class="ns-screen">
+    <AppBar ShowSettings="false" />
+
+    <div class="ns-heading ns-heading-lg">
+        <h1>@T["welcome_title"]</h1>
+        <p>@T.T("welcome_sub", T.Duration(Store.Data.Settings.LengthMinutes))</p>
+    </div>
+
+    <ol class="ns-steps">
+        <li><span class="ns-step-num">1</span><span>@T["welcome_step1"]</span></li>
+        <li><span class="ns-step-num">2</span><span>@T["welcome_step2"]</span></li>
+        <li><span class="ns-step-num">3</span><span>@T["welcome_step3"]</span></li>
+    </ol>
+
+    <div class="ns-actions">
+        @if (showIosHint)
+        {
+            <NxtCard CssClass="ns-note"><NxtIcon Name="smartphone" /> <span>@T["welcome_ios"]</span></NxtCard>
+        }
+        @if (permission == "default")
+        {
+            <NxtButton Variant="accent" CssClass="ns-cta" Busy="busy" OnClick="AllowAsync"><NxtIcon Name="bell" /> @T["allow_notifications"]</NxtButton>
+            <button type="button" class="ns-text-button" @onclick="ContinueAsync">@T["not_now"]</button>
+        }
+        else
+        {
+            <NxtButton Variant="accent" CssClass="ns-cta" OnClick="ContinueAsync">@T["continue"]</NxtButton>
+        }
+    </div>
+</main>
+
+@code {
+    private string permission = "";
+    private bool showIosHint;
+    private bool busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        permission = await Device.NotificationPermissionAsync();
+        showIosHint = await Device.IsIosAsync() && !await Device.IsStandaloneAsync();
+    }
+
+    private async Task AllowAsync()
+    {
+        busy = true;
+        permission = await Device.RequestNotificationsAsync();
+        busy = false;
+        await ContinueAsync();
+    }
+
+    private Task ContinueAsync() => Store.CompleteOnboardingAsync();
+}

@@ -1,0 +1,99 @@
+@page "/running"
+@inherits ScreenBase
+@inject CalendarService Calendar
+@inject ToastService Toast
+
+<PageTitle>@T["on_shift"] · @T["app_name"]</PageTitle>
+
+@if (Shift is { } shift)
+{
+    var over = ShiftMath.OvertimeMs(shift, Now) > 0;
+    <main class="ns-screen">
+        <AppBar>
+            <span class="ns-status-chip"><span class="ns-dot"></span> @T["on_shift"]</span>
+        </AppBar>
+
+        <div class="ns-ring-wrap">
+            <NxtProgressRing Progress="ShiftMath.Progress(shift, Now)" Size="280" Stroke="16" Label="@T["shift_progress"]">
+                @if (over)
+                {
+                    <span class="ns-ring-caption">@T["over_by"]</span>
+                    <strong class="ns-ring-countdown" dir="ltr">+@ShiftMath.Countdown(ShiftMath.OvertimeMs(shift, Now))</strong>
+                }
+                else
+                {
+                    <span class="ns-ring-caption">@T["until_punch_out"]</span>
+                    <strong class="ns-ring-countdown" dir="ltr" role="timer">@ShiftMath.Countdown(ShiftMath.RemainingMs(shift, Now))</strong>
+                }
+                <span class="ns-ring-caption">@T.T("of_length", T.Duration(shift.LengthMinutes))</span>
+            </NxtProgressRing>
+        </div>
+
+        <div class="nxt-stat-grid ns-stats">
+            <NxtStatTile Label="@T["started"]" Value="@Clock(shift.StartMs)" />
+            <NxtStatTile Label="@T["ends"]" Value="@Clock(shift.EndMs)" />
+            <NxtStatTile Label="@T["worked"]" Value="@ShiftMath.HoursMinutes(ShiftMath.WorkedMs(shift, Now))" />
+        </div>
+
+        <NxtCard CssClass="ns-info">
+            <p class="ns-icon-line"><NxtIcon Name="bell" CssClass="ns-accent" /> <span>@ReminderLine(shift)</span></p>
+            @if (Store.Data.Settings.RemindAtEnd)
+            {
+                <div class="ns-divider"></div>
+                @if (shift.CalendarUpToDate)
+                {
+                    <p class="ns-icon-line ns-ok"><NxtIcon Name="check" /> @T["calendar_added"]</p>
+                }
+                else
+                {
+                    <NxtButton Variant="secondary" CssClass="ns-calendar-button" OnClick="Calendar.AddAsync">
+                        <NxtIcon Name="calendar-plus" /> @(shift.CalendarAddedSequence is null ? T["add_to_calendar"] : T["calendar_readd"])
+                    </NxtButton>
+                }
+            }
+        </NxtCard>
+
+        <div class="ns-actions">
+            <NxtButton Variant="secondary" CssClass="ns-cta-outline" OnClick="Store.EndNowAsync"><NxtIcon Name="log-out" /> @T["end_shift_now"]</NxtButton>
+            <button type="button" class="ns-text-button" @onclick="() => sheetOpen = true">@T["fix_start"]</button>
+        </div>
+    </main>
+
+    <StartTimeSheet IsOpen="sheetOpen" InitialStartMs="shift.StartMs" LengthMinutes="shift.LengthMinutes" ConfirmText="@T["save"]"
+                    OnConfirm="FixStartAsync" OnDismiss="() => sheetOpen = false" />
+    <CalendarSheet IsOpen="calendarOpen" OnDismiss="() => calendarOpen = false" />
+}
+
+@code {
+    private bool sheetOpen;
+    private bool calendarOpen;
+    private ActiveShift? Shift => Store.Data.Current;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        if (Calendar.OfferPending && Shift is not null)
+        {
+            Calendar.OfferPending = false;
+            calendarOpen = true;
+        }
+    }
+
+    private string ReminderLine(ActiveShift shift)
+    {
+        var s = Store.Data.Settings;
+        if (shift.SnoozedUntilMs is { } until && until > Now) return T.T("reminder_snoozed", Clock(until));
+        if (!s.RemindAtEnd) return T["reminder_off"];
+        return s.HeadsUp
+            ? T.T("reminder_at", Clock(shift.EndMs), Clock(ShiftMath.HeadsUpMs(shift)))
+            : T.T("reminder_at_only", Clock(shift.EndMs));
+    }
+
+    private async Task FixStartAsync(long startMs)
+    {
+        sheetOpen = false;
+        var hadCalendar = Shift?.CalendarAddedSequence is not null;
+        await Store.FixStartAsync(startMs);
+        Toast.Show(hadCalendar ? T["calendar_readd_toast"] : T["start_fixed"]);
+    }
+}

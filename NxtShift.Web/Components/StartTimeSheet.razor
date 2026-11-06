@@ -1,0 +1,46 @@
+@inject ShiftStore Store
+@inject ShiftText T
+
+@* Pick the time the shift really started. A time later than now means yesterday (a night shift). *@
+<NxtBottomSheet IsOpen="IsOpen" Title="@T["start_sheet_title"]" OnDismiss="OnDismiss">
+    <div class="ns-sheet-body">
+        <label class="nxt-label" for="ns-start-time">@T["start_label"]</label>
+        <NxtTimeInput Id="ns-start-time" @bind-Value="time" />
+        <p class="nxt-hint">
+            @if (IsYesterday) { <span>@T["start_yesterday"] </span> }
+            @T.T("start_sheet_ends", ShiftMath.Clock(StartMs + LengthMinutes * 60_000L, Store.Zone))
+        </p>
+        <div class="ns-sheet-actions">
+            <NxtButton Variant="accent" OnClick="Confirm">@ConfirmText</NxtButton>
+            <NxtButton Variant="secondary" OnClick="OnDismiss">@T["cancel"]</NxtButton>
+        </div>
+    </div>
+</NxtBottomSheet>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public long? InitialStartMs { get; set; }
+    [Parameter] public int LengthMinutes { get; set; }
+    [Parameter, EditorRequired] public string ConfirmText { get; set; } = "";
+    [Parameter] public EventCallback<long> OnConfirm { get; set; }
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private TimeOnly time;
+    private bool wasOpen;
+
+    private long StartMs => ShiftMath.ResolveStart(time, Store.NowLocal);
+    private bool IsYesterday => DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeMilliseconds(StartMs), Store.Zone).DateTime)
+                                < DateOnly.FromDateTime(Store.NowLocal.DateTime);
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && !wasOpen)
+        {
+            var initial = TimeZoneInfo.ConvertTime(DateTimeOffset.FromUnixTimeMilliseconds(InitialStartMs ?? Store.NowMs), Store.Zone);
+            time = new TimeOnly(initial.Hour, initial.Minute);
+        }
+        wasOpen = IsOpen;
+    }
+
+    private Task Confirm() => OnConfirm.InvokeAsync(StartMs);
+}

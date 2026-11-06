@@ -1,0 +1,27 @@
+@inject ShiftStore Store
+@inject ShiftText T
+@inject CalendarService Calendar
+
+<NxtBottomSheet IsOpen="IsOpen" Title="@T["calendar_sheet_title"]" OnDismiss="OnDismiss">
+    <div class="ns-sheet-body">
+        @if (Store.Data.Current is { } shift)
+        {
+            <p class="nxt-hint">@T.T("calendar_sheet_body", ShiftMath.Clock(shift.EndMs, Store.Zone))</p>
+        }
+        <div class="ns-sheet-actions">
+            <NxtButton Variant="accent" OnClick="AddAsync"><NxtIcon Name="calendar-plus" /> @T["add_to_calendar"]</NxtButton>
+            <NxtButton Variant="secondary" OnClick="OnDismiss">@T["not_now"]</NxtButton>
+        </div>
+    </div>
+</NxtBottomSheet>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback OnDismiss { get; set; }
+
+    private async Task AddAsync()
+    {
+        await Calendar.AddAsync();
+        await OnDismiss.InvokeAsync();
+    }
+}

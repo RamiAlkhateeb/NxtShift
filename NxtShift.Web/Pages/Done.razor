@@ -1,0 +1,34 @@
+@page "/done"
+@inherits ScreenBase
+
+<PageTitle>@T["done_title"] · @T["app_name"]</PageTitle>
+
+@if (Store.Data.Last is { } last)
+{
+    <main class="ns-screen">
+        <AppBar />
+
+        <div class="ns-done">
+            <span class="ns-done-check" aria-hidden="true"><NxtIcon Name="check" /></span>
+            <div class="ns-heading ns-heading-lg ns-center">
+                <h1>@T["done_title"]</h1>
+                <p>@T["done_body"]</p>
+            </div>
+
+            <NxtCard CssClass="nxt-list ns-summary">
+                <NxtListRow Label="@T["punched_in_label"]" Value="@Clock(last.StartMs)" />
+                <NxtListRow Label="@T["punched_out_label"]" Value="@Clock(last.PunchedOutMs)" />
+                <NxtListRow Label="@T["total"]" Value="@T.Duration(last.WorkedMs)" Strong="true" />
+            </NxtCard>
+
+            @if (last.PunchedOutMs < last.PlannedEndMs)
+            {
+                <p class="nxt-hint ns-muted ns-center">@T["done_calendar_hint"]</p>
+            }
+        </div>
+
+        <div class="ns-actions">
+            <NxtButton Variant="accent" CssClass="ns-cta" OnClick="Store.BackToHomeAsync">@T["back_home"]</NxtButton>
+        </div>
+    </main>
+}

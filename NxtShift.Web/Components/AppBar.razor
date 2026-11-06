@@ -1,0 +1,20 @@
+@inject ShiftText T
+@inject NxtText L
+
+@* Top row of the light screens: brand (or a status chip) and the settings button. *@
+<header class="ns-top">
+    @if (ChildContent is not null) { @ChildContent }
+    else
+    {
+        <span class="ns-brand"><img src="logo.png" alt="" width="28" height="28" /> @T["app_name"]</span>
+    }
+    @if (ShowSettings)
+    {
+        <NxtIconButton Label="@L["settings_title"]" Href="settings"><NxtIcon Name="sliders" /></NxtIconButton>
+    }
+</header>
+
+@code {
+    [Parameter] public bool ShowSettings { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

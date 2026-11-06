@@ -1,0 +1,72 @@
+@page "/settings"
+@inherits ScreenBase
+@inject DeviceService Device
+
+<PageTitle>@L["settings_title"] · @T["app_name"]</PageTitle>
+
+<div class="nxt-page ns-settings">
+    <NxtSettingsPage ShowAi="false" BackHref="./">
+        <AppSections>
+            <NxtSettingsSection Icon="clock" Title="@T["shift_title"]" Description="@T["shift_desc"]">
+                <NxtStepper Value="S.LengthMinutes" Step="ShiftSettings.LengthStepMinutes"
+                            Min="ShiftSettings.MinLengthMinutes" Max="ShiftSettings.MaxLengthMinutes"
+                            Format="T.Duration" Hint="@T["steps_of"]" Label="@T["shift_title"]"
+                            DecreaseLabel="@T["shorter"]" IncreaseLabel="@T["longer"]"
+                            ValueChanged="v => Update(s => s with { LengthMinutes = v })" />
+            </NxtSettingsSection>
+
+            <NxtSettingsSection Icon="bell" Title="@T["reminders_title"]" Description="@T["reminders_desc"]">
+                <div class="nxt-list">
+                    <NxtSwitch Label="@T["remind_end"]" Value="S.RemindAtEnd" ValueChanged="v => Update(s => s with { RemindAtEnd = v })" />
+                    <NxtSwitch Label="@T["remind_headsup"]" Value="S.HeadsUp" Disabled="!S.RemindAtEnd" ValueChanged="v => Update(s => s with { HeadsUp = v })" />
+                    <NxtSwitch Label="@T["remind_repeat"]" Value="S.Repeat" Disabled="!S.RemindAtEnd" ValueChanged="v => Update(s => s with { Repeat = v })" />
+                    <NxtSwitch Label="@T["remind_sound"]" Value="S.Sound" Disabled="!S.RemindAtEnd" ValueChanged="v => Update(s => s with { Sound = v })" />
+                    <NxtSwitch Label="@T["remind_calendar"]" Value="S.OfferCalendar" Disabled="!S.RemindAtEnd" ValueChanged="v => Update(s => s with { OfferCalendar = v })" />
+                </div>
+            </NxtSettingsSection>
+
+            <NxtSettingsSection Icon="smartphone" Title="@T["device_title"]">
+                <div class="nxt-list">
+                    <NxtListRow Label="@T["device_notifications"]">
+                        @switch (permission)
+                        {
+                            case "granted":
+                                <span class="ns-ok"><NxtIcon Name="check" /> @T["status_granted"]</span>
+                                break;
+                            case "default":
+                                <NxtButton Variant="secondary" OnClick="AllowAsync">@T["allow"]</NxtButton>
+                                break;
+                            case "denied":
+                                <span class="ns-muted">@T["status_denied"]</span>
+                                break;
+                            default:
+                                <span class="ns-muted">@(isIos && !standalone ? T["status_ios_install"] : T["status_unsupported"])</span>
+                                break;
+                        }
+                    </NxtListRow>
+                    <NxtListRow Label="@T["device_installed"]">
+                        <span class="@(standalone ? "ns-ok" : "ns-muted")">@if (standalone) { <NxtIcon Name="check" /> } @(standalone ? T["installed"] : T["not_installed"])</span>
+                    </NxtListRow>
+                </div>
+            </NxtSettingsSection>
+        </AppSections>
+    </NxtSettingsPage>
+</div>
+
+@code {
+    private string permission = "";
+    private bool standalone;
+    private bool isIos;
+    private ShiftSettings S => Store.Data.Settings;
+
+    protected override async Task OnInitializedAsync()
+    {
+        permission = await Device.NotificationPermissionAsync();
+        standalone = await Device.IsStandaloneAsync();
+        isIos = await Device.IsIosAsync();
+    }
+
+    private Task Update(Func<ShiftSettings, ShiftSettings> change) => Store.UpdateSettingsAsync(change);
+
+    private async Task AllowAsync() => permission = await Device.RequestNotificationsAsync();
+}
