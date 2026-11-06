@@ -69,8 +69,7 @@ public sealed class ShiftStore
             Current = shift with
             {
                 StartMs = Math.Min(startMs, NowMs),
-                SnoozedUntilMs = null,
-                CalendarSequence = shift.CalendarSequence + 1
+                SnoozedUntilMs = null
             }
         })
         : Task.CompletedTask;
@@ -92,10 +91,6 @@ public sealed class ShiftStore
 
     public Task BackToHomeAsync() => SaveAsync(Data with { Last = null });
 
-    public Task MarkCalendarAddedAsync() => Data.Current is { } shift
-        ? SaveAsync(Data with { Current = shift with { CalendarAddedSequence = shift.CalendarSequence } })
-        : Task.CompletedTask;
-
     /// <summary>Changes settings. A new shift length also applies to the running shift.</summary>
     public Task UpdateSettingsAsync(Func<ShiftSettings, ShiftSettings> change)
     {
@@ -106,9 +101,7 @@ public sealed class ShiftStore
         };
         var current = Data.Current;
         if (current is not null && current.LengthMinutes != settings.LengthMinutes && !current.EndedEarly)
-            current = current with { LengthMinutes = settings.LengthMinutes, CalendarSequence = current.CalendarSequence + 1 };
-        else if (current is not null && (Data.Settings.HeadsUp != settings.HeadsUp || Data.Settings.Repeat != settings.Repeat))
-            current = current with { CalendarSequence = current.CalendarSequence + 1 };
+            current = current with { LengthMinutes = settings.LengthMinutes };
         return SaveAsync(Data with { Settings = settings, Current = current });
     }
 

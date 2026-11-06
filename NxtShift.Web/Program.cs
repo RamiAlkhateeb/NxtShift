@@ -34,7 +34,6 @@ builder.Services.AddScoped<IShiftStorage, BrowserShiftStorage>();
 builder.Services.AddScoped<ShiftStore>();
 builder.Services.AddScoped<ShiftText>();
 builder.Services.AddScoped<DeviceService>();
-builder.Services.AddScoped<CalendarService>();
 builder.Services.AddScoped<ReminderService>();
 
 await builder.Build().RunAsync();

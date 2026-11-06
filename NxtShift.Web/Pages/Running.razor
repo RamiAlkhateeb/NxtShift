@@ -1,6 +1,5 @@
 @page "/running"
 @inherits ScreenBase
-@inject CalendarService Calendar
 @inject ToastService Toast
 
 <PageTitle>@T["on_shift"] · @T["app_name"]</PageTitle>
@@ -37,20 +36,6 @@
 
         <NxtCard CssClass="ns-info">
             <p class="ns-icon-line"><NxtIcon Name="bell" CssClass="ns-accent" /> <span>@ReminderLine(shift)</span></p>
-            @if (Store.Data.Settings.RemindAtEnd)
-            {
-                <div class="ns-divider"></div>
-                @if (shift.CalendarUpToDate)
-                {
-                    <p class="ns-icon-line ns-ok"><NxtIcon Name="check" /> @T["calendar_added"]</p>
-                }
-                else
-                {
-                    <NxtButton Variant="secondary" CssClass="ns-calendar-button" OnClick="Calendar.AddAsync">
-                        <NxtIcon Name="calendar-plus" /> @(shift.CalendarAddedSequence is null ? T["add_to_calendar"] : T["calendar_readd"])
-                    </NxtButton>
-                }
-            }
         </NxtCard>
 
         <div class="ns-actions">
@@ -61,23 +46,11 @@
 
     <StartTimeSheet IsOpen="sheetOpen" InitialStartMs="shift.StartMs" LengthMinutes="shift.LengthMinutes" ConfirmText="@T["save"]"
                     OnConfirm="FixStartAsync" OnDismiss="() => sheetOpen = false" />
-    <CalendarSheet IsOpen="calendarOpen" OnDismiss="() => calendarOpen = false" />
 }
 
 @code {
     private bool sheetOpen;
-    private bool calendarOpen;
     private ActiveShift? Shift => Store.Data.Current;
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        if (Calendar.OfferPending && Shift is not null)
-        {
-            Calendar.OfferPending = false;
-            calendarOpen = true;
-        }
-    }
 
     private string ReminderLine(ActiveShift shift)
     {
@@ -92,8 +65,7 @@
     private async Task FixStartAsync(long startMs)
     {
         sheetOpen = false;
-        var hadCalendar = Shift?.CalendarAddedSequence is not null;
         await Store.FixStartAsync(startMs);
-        Toast.Show(hadCalendar ? T["calendar_readd_toast"] : T["start_fixed"]);
+        Toast.Show(T["start_fixed"]);
     }
 }
