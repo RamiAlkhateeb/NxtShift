@@ -18,14 +18,12 @@ public sealed record ShiftSettings
     public bool HeadsUp { get; init; } = true;
     public bool Repeat { get; init; } = true;
     public bool Sound { get; init; }
-    /// <summary>Offer the calendar reminder right after punching in.</summary>
-    public bool OfferCalendar { get; init; } = true;
 }
 
 /// <summary>The shift in progress. All instants are Unix epoch milliseconds (UTC), so DST and midnight are non-issues.</summary>
 public sealed record ActiveShift
 {
-    /// <summary>Stable id (the instant of the punch-in tap); the calendar event's UID is built from it.</summary>
+    /// <summary>Stable id: the instant of the punch-in tap.</summary>
     public long Id { get; init; }
     public long StartMs { get; init; }
     public int LengthMinutes { get; init; }
@@ -34,13 +32,8 @@ public sealed record ActiveShift
     public long? EndedEarlyAtMs { get; init; }
     /// <summary>"Remind me again in 5 min": the time-up screen waits until this instant.</summary>
     public long? SnoozedUntilMs { get; init; }
-    /// <summary>Bumped on every change to the times, so a re-added calendar event replaces the old one.</summary>
-    public int CalendarSequence { get; init; }
-    /// <summary>The calendar sequence that was last added to the calendar, or null if never.</summary>
-    public int? CalendarAddedSequence { get; init; }
 
     public long EndMs => StartMs + LengthMinutes * 60_000L;
-    public bool CalendarUpToDate => CalendarAddedSequence == CalendarSequence;
 }
 
 /// <summary>A finished shift, shown on the Done screen.</summary>

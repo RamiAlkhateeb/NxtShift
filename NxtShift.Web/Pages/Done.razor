@@ -20,11 +20,6 @@
                 <NxtListRow Label="@T["punched_out_label"]" Value="@Clock(last.PunchedOutMs)" />
                 <NxtListRow Label="@T["total"]" Value="@T.Duration(last.WorkedMs)" Strong="true" />
             </NxtCard>
-
-            @if (last.PunchedOutMs < last.PlannedEndMs)
-            {
-                <p class="nxt-hint ns-muted ns-center">@T["done_calendar_hint"]</p>
-            }
         </div>
 
         <div class="ns-actions">

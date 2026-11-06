@@ -1,6 +1,5 @@
 @page "/"
 @inherits ScreenBase
-@inject CalendarService Calendar
 
 <PageTitle>@T["app_name"]</PageTitle>
 
@@ -44,7 +43,6 @@
     private async Task PunchInAsync(long? startMs)
     {
         sheetOpen = false;
-        Calendar.OfferPending = Settings.OfferCalendar && Settings.RemindAtEnd;
         await Store.PunchInAsync(startMs);
     }
 }

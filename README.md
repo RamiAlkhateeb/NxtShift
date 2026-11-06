@@ -9,9 +9,9 @@ Arabic and English (RTL-aware), light and dark, works offline. Part of the Nxt f
 
 | Project | What lives there |
 |---|---|
-| `NxtShift.Core` | Pure logic: `ShiftMath` (time arithmetic, which screen to show, upcoming reminders), `IcsBuilder` (calendar file), `ShiftStore` (state and every transition, persisted as one JSON value). |
+| `NxtShift.Core` | Pure logic: `ShiftMath` (time arithmetic, which screen to show, upcoming reminders), `ShiftStore` (state and every transition, persisted as one JSON value). |
 | `NxtShift.Tests` | xUnit tests for everything in Core. |
-| `NxtShift.Web` | The WASM host: pages (Welcome, Home, Running, TimeUp, Done, Settings), services (strings, reminders, calendar, device), `wwwroot` (CSS, icons, manifest, service worker). |
+| `NxtShift.Web` | The WASM host: pages (Welcome, Home, Running, TimeUp, Done, Settings), services (strings, reminders, device), `wwwroot` (CSS, icons, manifest, service worker). |
 | `tools/prepare-pages.py` | Turns `dotnet publish` output into a Pages site under `/<repo>/`. |
 
 ```bash
@@ -23,14 +23,10 @@ dotnet run --project NxtShift.Web
 
 ## How reminders work (no backend)
 
-A static web app can't wake a phone at 17:08 once it's closed: there is no push server, iOS suspends timers, and
-scheduled local notifications never shipped in browsers. So NxtShift uses two layers:
-
-1. **Calendar reminder.** After punching in, the app offers an `.ics` event at the shift's end, with alarms at the
-   end, 10 minutes before, and 5 and 10 minutes after. The phone's own calendar fires these even when the app is closed.
-   If the start time or length changes, the event keeps its UID with a higher SEQUENCE, and the app asks you to add it again.
-2. **In-app notifications** (`nxt.notify` in Nxt.UI) while the app is open or was used recently: heads-up, end,
-   repeat every 5 minutes until "I've punched out" (up to 12 times), optional sound.
+Reminders are in-app notifications (`nxt.notify` in Nxt.UI): a heads-up 10 minutes before the end, one at the end,
+then every 5 minutes until "I've punched out" (up to 12 times), with an optional sound. They fire while the app is open
+or was used recently. A static web app can't wake a phone once it's closed (no push server, and iOS suspends timers),
+so keep the app in the background during the shift. Reopening it always lands on the right screen.
 
 Everything on screen is derived from timestamps (epoch ms), so the countdown is right after the phone sleeps, across
 midnight, and across DST changes. State lives in `localStorage` under `nxtshift.state`.

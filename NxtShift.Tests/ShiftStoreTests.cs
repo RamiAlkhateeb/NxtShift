@@ -70,18 +70,19 @@ public class ShiftStoreTests
     }
 
     [Fact]
-    public async Task Fixing_the_start_bumps_the_calendar_sequence_and_clears_a_snooze()
+    public async Task Fixing_the_start_moves_the_shift_and_clears_a_snooze()
     {
         var store = await NewStoreAsync();
         await store.PunchInAsync();
-        await store.MarkCalendarAddedAsync();
-        Assert.True(store.Data.Current!.CalendarUpToDate);
+        _time.Advance(TimeSpan.FromHours(8.5));
+        await store.SnoozeAsync();
+        Assert.NotNull(store.Data.Current!.SnoozedUntilMs);
 
         await store.FixStartAsync(Ms.At(8, 0));
         Assert.Equal(Ms.At(8, 0), store.Data.Current!.StartMs);
-        Assert.Equal(1, store.Data.Current.CalendarSequence);
-        Assert.False(store.Data.Current.CalendarUpToDate);
-        Assert.Equal(store.Data.Current.Id, Ms.At(8, 38));
+        Assert.Null(store.Data.Current.SnoozedUntilMs);
+        Assert.Equal(Ms.At(8, 38), store.Data.Current.Id);
+        Assert.Equal(ShiftScreen.TimeUp, store.Screen);
     }
 
     [Fact]
@@ -104,7 +105,6 @@ public class ShiftStoreTests
         await store.PunchInAsync();
         await store.UpdateSettingsAsync(s => s with { LengthMinutes = 480 });
         Assert.Equal(480, store.Data.Current!.LengthMinutes);
-        Assert.Equal(1, store.Data.Current.CalendarSequence);
 
         await store.UpdateSettingsAsync(s => s with { LengthMinutes = 5 });
         Assert.Equal(ShiftSettings.MinLengthMinutes, store.Data.Settings.LengthMinutes);

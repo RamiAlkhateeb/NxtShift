@@ -4,8 +4,8 @@ using Microsoft.JSInterop;
 namespace NxtShift.Web.Services;
 
 /// <summary>
-/// Keeps the browser's in-app notification timers in step with the shift. These only fire while the page is alive;
-/// the calendar reminder (<see cref="CalendarService"/>) covers the closed-app case.
+/// Keeps the browser's in-app notification timers in step with the shift. These only fire while the page is alive
+/// (open, or recently backgrounded): a static web app has no way to notify once it is closed.
 /// </summary>
 public sealed class ReminderService(IJSRuntime js, ShiftStore store, ShiftText text, NavigationManager nav) : IAsyncDisposable
 {
