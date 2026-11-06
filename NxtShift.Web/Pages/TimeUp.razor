@@ -1,0 +1,31 @@
+@page "/time-up"
+@inherits ScreenBase
+
+<PageTitle>@T["notif_end_title"] · @T["app_name"]</PageTitle>
+
+@if (Store.Data.Current is { } shift)
+{
+    <main class="ns-screen ns-dark">
+        <div class="ns-top ns-top-center" dir="ltr">@Clock(Now)</div>
+
+        <div class="ns-timeup">
+            <div class="ns-bell" aria-hidden="true">
+                <span class="ns-bell-halo"></span><span class="ns-bell-halo is-inner"></span>
+                <span class="ns-bell-core"><NxtIcon Name="bell-ring" /></span>
+            </div>
+            <div class="ns-heading ns-heading-lg ns-center">
+                <h1>@(shift.EndedEarly ? T["timeup_early_title"] : T["timeup_title"])</h1>
+                <p>@T["timeup_body"]</p>
+            </div>
+            <div class="ns-chips">
+                <span>@T.T("started_chip", Clock(shift.StartMs))</span>
+                <span>@T.T("done_chip", T.Duration(ShiftMath.WorkedMs(shift, Now)))</span>
+            </div>
+        </div>
+
+        <div class="ns-actions">
+            <button type="button" class="nxt-button ns-cta ns-amber" @onclick="Store.PunchOutAsync"><NxtIcon Name="check" /> @T["punched_out"]</button>
+            <button type="button" class="nxt-button ns-cta-outline ns-ghost-light" @onclick="Store.SnoozeAsync">@T["remind_again"]</button>
+        </div>
+    </main>
+}

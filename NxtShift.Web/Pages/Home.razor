@@ -1,0 +1,50 @@
+@page "/"
+@inherits ScreenBase
+@inject CalendarService Calendar
+
+<PageTitle>@T["app_name"]</PageTitle>
+
+<main class="ns-screen">
+    <AppBar />
+
+    <div class="ns-heading">
+        <p class="ns-date">@T.DayDate(Store.NowLocal)</p>
+        <h1>@T["home_question"]</h1>
+    </div>
+
+    <div class="ns-ring-wrap">
+        <NxtProgressRing Progress="0" Size="240" Stroke="14">
+            <strong class="ns-ring-big" dir="ltr">@ShiftMath.HoursMinutes(Settings.LengthMinutes)</strong>
+            <span class="ns-ring-caption">@T["hours_per_shift"]</span>
+        </NxtProgressRing>
+    </div>
+
+    <NxtCard CssClass="ns-info">
+        <div class="ns-info-row">
+            <span class="ns-muted">@T.T("if_now", Clock(Now))</span>
+            <strong class="ns-info-strong">@T.T("ends_at", Clock(Now + Settings.LengthMinutes * 60_000L))</strong>
+        </div>
+        <div class="ns-divider"></div>
+        <p class="ns-icon-line"><NxtIcon Name="bell" CssClass="ns-accent" /> @(Settings.RemindAtEnd ? T["home_reminder_note"] : T["home_reminder_off"])</p>
+    </NxtCard>
+
+    <div class="ns-actions">
+        <NxtButton Variant="accent" CssClass="ns-cta" OnClick="() => PunchInAsync(null)"><NxtIcon Name="log-in" /> @T["punch_in"]</NxtButton>
+        <button type="button" class="ns-text-button is-accent" @onclick="() => sheetOpen = true">@T["started_earlier"]</button>
+    </div>
+</main>
+
+<StartTimeSheet IsOpen="sheetOpen" LengthMinutes="Settings.LengthMinutes" ConfirmText="@T["start_shift"]"
+                OnConfirm="start => PunchInAsync(start)" OnDismiss="() => sheetOpen = false" />
+
+@code {
+    private bool sheetOpen;
+    private ShiftSettings Settings => Store.Data.Settings;
+
+    private async Task PunchInAsync(long? startMs)
+    {
+        sheetOpen = false;
+        Calendar.OfferPending = Settings.OfferCalendar && Settings.RemindAtEnd;
+        await Store.PunchInAsync(startMs);
+    }
+}
