@@ -47,7 +47,7 @@ public static class ShiftMath
         return start.ToUnixTimeMilliseconds();
     }
 
-    public enum ReminderKind { HeadsUp, End, Repeat, Snooze }
+    public enum ReminderKind { HeadsUp, End, Repeat, Snooze, Hour }
 
     public sealed record Reminder(string Id, ReminderKind Kind, long AtMs);
 
@@ -65,9 +65,18 @@ public static class ShiftMath
         }
         if (shift.EndedEarly) return list;
 
+        if (s.HourlySound)
+        {
+            for (var k = 1; ; k++)
+            {
+                var at = HourMarkMs(shift, k);
+                if (at >= shift.EndMs) break;
+                if (at > nowMs) list.Add(new($"hour-{k}", ReminderKind.Hour, at));
+            }
+        }
         if (s.HeadsUp && s.RemindAtEnd && HeadsUpMs(shift) > nowMs && HeadsUpMs(shift) > shift.StartMs)
             list.Add(new("headsup", ReminderKind.HeadsUp, HeadsUpMs(shift)));
-        if (s.RemindAtEnd && shift.EndMs > nowMs)
+        if ((s.RemindAtEnd || s.EndSound) && shift.EndMs > nowMs)
             list.Add(new("end", ReminderKind.End, shift.EndMs));
         if (s.RemindAtEnd && s.Repeat)
         {
@@ -78,7 +87,20 @@ public static class ShiftMath
                 if (at > nowMs) { list.Add(new("repeat", ReminderKind.Repeat, at)); break; }
             }
         }
+        list.Sort((a, b) => a.AtMs.CompareTo(b.AtMs));
         return list;
+    }
+
+    /// <summary>The instant the k-th full hour of the shift is done.</summary>
+    public static long HourMarkMs(ActiveShift shift, int k) => shift.StartMs + k * 3_600_000L;
+
+    /// <summary>The next hour mark still ahead and before the end, or null.</summary>
+    public static long? NextHourMarkMs(ActiveShift shift, long nowMs)
+    {
+        if (shift.EndedEarly || nowMs >= shift.EndMs) return null;
+        var k = (int)(Math.Max(0, nowMs - shift.StartMs) / 3_600_000L) + 1;
+        var at = HourMarkMs(shift, k);
+        return at < shift.EndMs ? at : null;
     }
 
     // ---------- Formatting (Latin digits in every language; times read left-to-right) ----------
