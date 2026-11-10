@@ -1,6 +1,7 @@
 @page "/settings"
 @inherits ScreenBase
 @inject DeviceService Device
+@inject IJSRuntime JS
 
 <PageTitle>@L["settings_title"] · @T["app_name"]</PageTitle>
 
@@ -20,8 +21,15 @@
                     <NxtSwitch Label="@T["remind_end"]" Value="S.RemindAtEnd" ValueChanged="v => Update(s => s with { RemindAtEnd = v })" />
                     <NxtSwitch Label="@T["remind_headsup"]" Value="S.HeadsUp" Disabled="!S.RemindAtEnd" ValueChanged="v => Update(s => s with { HeadsUp = v })" />
                     <NxtSwitch Label="@T["remind_repeat"]" Value="S.Repeat" Disabled="!S.RemindAtEnd" ValueChanged="v => Update(s => s with { Repeat = v })" />
-                    <NxtSwitch Label="@T["remind_sound"]" Value="S.Sound" Disabled="!S.RemindAtEnd" ValueChanged="v => Update(s => s with { Sound = v })" />
                 </div>
+            </NxtSettingsSection>
+
+            <NxtSettingsSection Icon="bell-ring" Title="@T["sounds_title"]" Description="@T["sounds_desc"]">
+                <div class="nxt-list">
+                    <NxtSwitch Label="@T["sound_hourly"]" Value="S.HourlySound" ValueChanged="v => Update(s => s with { HourlySound = v })" />
+                    <NxtSwitch Label="@T["sound_end"]" Value="S.EndSound" ValueChanged="v => Update(s => s with { EndSound = v })" />
+                </div>
+                <NxtButton Variant="secondary" OnClick="TestSoundsAsync">@T["sound_test"]</NxtButton>
             </NxtSettingsSection>
 
             <NxtSettingsSection Icon="smartphone" Title="@T["device_title"]">
@@ -66,6 +74,17 @@
     }
 
     private Task Update(Func<ShiftSettings, ShiftSettings> change) => Store.UpdateSettingsAsync(change);
+
+    private async Task TestSoundsAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("nxt.chime", "tick");
+            await Task.Delay(700);
+            await JS.InvokeVoidAsync("nxt.chime", "done");
+        }
+        catch (JSException) { }
+    }
 
     private async Task AllowAsync() => permission = await Device.RequestNotificationsAsync();
 }

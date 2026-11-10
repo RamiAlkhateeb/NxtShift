@@ -36,6 +36,11 @@
 
         <NxtCard CssClass="ns-info">
             <p class="ns-icon-line"><NxtIcon Name="bell" CssClass="ns-accent" /> <span>@ReminderLine(shift)</span></p>
+            @if (Store.Data.Settings.HourlySound && ShiftMath.NextHourMarkMs(shift, Now) is { } nextChime)
+            {
+                <div class="ns-divider"></div>
+                <p class="ns-icon-line"><NxtIcon Name="bell-ring" CssClass="ns-accent" /> <span>@T.T("next_chime", Clock(nextChime))</span></p>
+            }
         </NxtCard>
 
         <div class="ns-actions">

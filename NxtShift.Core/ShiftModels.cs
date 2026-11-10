@@ -17,7 +17,10 @@ public sealed record ShiftSettings
     public bool RemindAtEnd { get; init; } = true;
     public bool HeadsUp { get; init; } = true;
     public bool Repeat { get; init; } = true;
-    public bool Sound { get; init; }
+    /// <summary>A short sound each time another full hour of the shift is done.</summary>
+    public bool HourlySound { get; init; } = true;
+    /// <summary>A longer sound when the shift ends (and a short one on each repeat).</summary>
+    public bool EndSound { get; init; } = true;
 }
 
 /// <summary>The shift in progress. All instants are Unix epoch milliseconds (UTC), so DST and midnight are non-issues.</summary>

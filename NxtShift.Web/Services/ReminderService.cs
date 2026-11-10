@@ -36,31 +36,58 @@ public sealed class ReminderService(IJSRuntime js, ShiftStore store, ShiftText t
         var upcoming = ShiftMath.UpcomingReminders(store.Data, store.NowMs);
 
         await js.InvokeVoidAsync("nxt.notify.cancelAll");
-        if (store.Data.Current is not { } shift) return;
+        foreach (var r in upcoming) await ScheduleAsync(r);
+    }
 
-        foreach (var r in upcoming)
+    private async Task ScheduleAsync(ShiftMath.Reminder r)
+    {
+        if (store.Data.Current is not { } shift) return;
+        var remind = store.Data.Settings.RemindAtEnd;
+        // A null title schedules a sound-only timer (no notification).
+        var (title, body, path) = r.Kind switch
         {
-            var (title, body, path) = r.Kind switch
-            {
-                ShiftMath.ReminderKind.HeadsUp => (text["notif_headsup_title"], text.T("notif_headsup_body", ShiftMath.Clock(shift.EndMs, store.Zone)), "running"),
-                ShiftMath.ReminderKind.End => (text["notif_end_title"], text["notif_end_body"], "time-up"),
-                _ => (text["notif_repeat_title"], text["notif_repeat_body"], "time-up"),
-            };
-            await js.InvokeVoidAsync("nxt.notify.schedule", r.Id, r.AtMs, title, body, "nxtshift", nav.ToAbsoluteUri(path).ToString(), _ref);
-        }
+            ShiftMath.ReminderKind.Hour => ((string?)null, "", "running"),
+            ShiftMath.ReminderKind.End when !remind => (null, "", "time-up"),
+            ShiftMath.ReminderKind.HeadsUp => (text["notif_headsup_title"], text.T("notif_headsup_body", ShiftMath.Clock(shift.EndMs, store.Zone)), "running"),
+            ShiftMath.ReminderKind.End => (text["notif_end_title"], text["notif_end_body"], "time-up"),
+            _ => (text["notif_repeat_title"], text["notif_repeat_body"], "time-up"),
+        };
+        await js.InvokeVoidAsync("nxt.notify.schedule", r.Id, r.AtMs, title, body, "nxtshift", nav.ToAbsoluteUri(path).ToString(), _ref);
     }
 
     [JSInvokable]
     public async Task OnNotificationDue(string id)
     {
-        if (id != "headsup" && store.Data.Settings.Sound)
+        var s = store.Data.Settings;
+        var pattern = id switch
         {
-            try { await js.InvokeVoidAsync("nxt.chime"); } catch (JSException) { }
+            _ when id.StartsWith("hour-") => s.HourlySound && !IsStaleHourMark(id) ? "tick" : null,
+            "end" => s.EndSound ? "done" : null,
+            "repeat" or "snooze" => s.EndSound ? "tick" : null,
+            _ => null,
+        };
+        if (pattern is not null)
+        {
+            try { await js.InvokeVoidAsync("nxt.chime", pattern); } catch (JSException) { }
         }
-        _scheduledFor = default; // schedule the next repeat
-        await RescheduleAsync();
+
+        // Queue the next repeat only. Rescheduling everything here would cancel timers that came due at the same
+        // moment (after the phone wakes, or in a throttled background tab) before they fire, such as the end sound.
+        if (id is "end" or "repeat" or "snooze")
+        {
+            foreach (var r in ShiftMath.UpcomingReminders(store.Data, store.NowMs).Where(r => r.Kind == ShiftMath.ReminderKind.Repeat))
+            {
+                try { await ScheduleAsync(r); } catch (JSException) { }
+            }
+        }
         store.NotifyTick();
     }
+
+    /// <summary>An hour tick that fires more than 2 minutes late (the app was asleep) is skipped, so waking up doesn't play a backlog.</summary>
+    private bool IsStaleHourMark(string id) =>
+        store.Data.Current is { } shift
+        && int.TryParse(id.AsSpan("hour-".Length), out var k)
+        && store.NowMs - ShiftMath.HourMarkMs(shift, k) > 2 * 60_000L;
 
     public ValueTask DisposeAsync()
     {
